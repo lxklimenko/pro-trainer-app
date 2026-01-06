@@ -24,15 +24,15 @@ import {
 
 /**
  * КОНФИГУРАЦИЯ ИИ (GEMINI)
- * API ключ подставляется автоматически средой выполнения.
+ * Используем переменную окружения для безопасности.
  */
-const apiKey = "";
-const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
-const TTS_MODEL = "gemini-2.5-flash-preview-tts";
+const apiKey = import.meta.env.VITE_GEMINI_KEY || "";
+const GEMINI_MODEL = "gemini-2.0-flash-exp"; // Обновлено до актуальной стабильной модели
+const TTS_MODEL = "gemini-2.0-flash-exp-tts";
 
 const STORAGE_KEY = "trainer_pro_data_v5";
 
-// Вспомогательная функция для генерации уникальных ID без использования внешних библиотек
+// Вспомогательная функция для генерации уникальных ID
 const generateId = () => {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 };
@@ -41,7 +41,6 @@ const generateId = () => {
  * ФУНКЦИИ ВЗАИМОДЕЙСТВИЯ С GEMINI API
  */
 
-// Вызов текстовой модели для генерации плана и анализа
 async function callGemini(prompt, systemInstruction = "") {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
   const payload = {
@@ -68,7 +67,6 @@ async function callGemini(prompt, systemInstruction = "") {
   }
 }
 
-// Вызов TTS модели для озвучки текста
 async function textToSpeech(text) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent?key=${apiKey}`;
   const payload = {
@@ -121,9 +119,6 @@ async function textToSpeech(text) {
   }
 }
 
-/**
- * КОМПОНЕНТ МОДАЛЬНОГО ОКНА
- */
 const Modal = ({ isOpen, title, children, onClose, onConfirm, confirmText = "Ок", isDanger = false, isLoading = false }) => {
   if (!isOpen) return null;
   return (
@@ -151,9 +146,6 @@ const Modal = ({ isOpen, title, children, onClose, onConfirm, confirmText = "О�
   );
 };
 
-/**
- * ГЛАВНОЕ ПРИЛОЖЕНИЕ
- */
 export default function App() {
   const [clients, setClients] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -172,12 +164,10 @@ export default function App() {
   const timerRef = useRef(null);
   const audioRef = useRef(null);
 
-  // Автосохранение в LocalStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clients));
   }, [clients]);
 
-  // Логика таймера
   useEffect(() => {
     if (timeLeft > 0) {
       timerRef.current = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -288,9 +278,7 @@ export default function App() {
   const currentClient = clients.find(c => c.id === view.clientId);
   const currentWorkout = currentClient?.workouts.find(w => w.id === view.workoutId);
 
-  // --- ЭКРАНЫ РЕНДЕРИНГА ---
-
-  // 1. Главный экран (Список клиентов)
+  // 1. Главный экран
   if (view.type === 'home') {
     return (
       <div className="min-h-screen bg-black text-zinc-100 p-6 font-sans">
@@ -352,7 +340,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* Секция Шаблона Плана */}
         <section className="mb-8 overflow-hidden bg-zinc-900/20 border border-zinc-800 rounded-2xl p-1 shadow-sm">
           <div className="flex items-center justify-between p-3">
             <button
@@ -419,7 +406,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Модалки для этого экрана */}
         <Modal isOpen={modal.type === 'aiPlan'} title="✨ О чем тренировка?" onClose={() => setModal({ type: null })} onConfirm={handleAiPlanGenerate} confirmText="Создать" isLoading={isAiLoading}>
           <textarea autoFocus className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:outline-none h-24 text-sm" placeholder="Напр: Силовая на ноги, акцент на присед" value={inputValue} onChange={e => setInputValue(e.target.value)} />
         </Modal>
@@ -483,10 +469,13 @@ export default function App() {
           placeholder="Опишите упражнения..."
           value={currentWorkout.content}
           onChange={e => {
-            setClients(clients.map(c => c.id === currentClient.id ? {
-              ...c,
-              workouts: c.workouts.map(w => w.id === currentWorkout.id ? { ...w, content: e.target.value } : w)
-            } : c));
+            const newContent = e.target.value;
+            setClients(clients.map(c =>
+              c.id === currentClient.id ? {
+                ...c,
+                workouts: c.workouts.map(w => w.id === currentWorkout.id ? { ...w, content: newContent } : w)
+              } : c
+            ));
           }}
         />
 
